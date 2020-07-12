@@ -73,6 +73,7 @@ oam_sprites:
 
 .enum game_states
   waiting_to_start
+  playing
 .endenum
 
 .importzp buttons
@@ -98,6 +99,11 @@ sprite_counter: .res 1
 debug_x: .res 1
 debug_y: .res 1
 debug_a: .res 1
+
+snek_x: .res 32
+snek_y: .res 32
+snek_head: .res 1
+snek_tail: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
@@ -143,25 +149,6 @@ vblankwait:
 .endproc
 
 .proc nmi_handler
-  save_regs
-
-  ; Fix Scroll
-  LDA PPUSTATUS
-  LDA #$20
-  STA PPUADDR
-  LDA #$00
-  STA PPUADDR
-  LDA #$00 ; horizontal scroll
-  STA PPUSCROLL
-  STA PPUSCROLL
-
-  ; Refresh OAM
-  LDA #$00
-  STA OAMADDR
-  LDA #$02
-  STA OAMDMA
-  restore_regs
-
   INC nmis
   RTI
 .endproc
@@ -213,7 +200,8 @@ clear_ram:
   LDA #1
   JSR FamiToneSfxInit
 
-  JSR go_to_title
+  ; JSR go_to_title ; TODO - restore when ready
+  JSR go_to_playing
 
 forever:
   LDA nmis
@@ -222,10 +210,31 @@ forever:
   STA old_nmis
   ; new frame code
   JSR game_state_handler
+  JSR screen_stuff
   JSR FamiToneUpdate
 
 etc:
   JMP forever
+.endproc
+
+.proc screen_stuff
+  ; Fix Scroll
+  LDA PPUSTATUS
+  LDA #$20
+  STA PPUADDR
+  LDA #$00
+  STA PPUADDR
+  LDA #$00 ; horizontal scroll
+  STA PPUSCROLL
+  STA PPUSCROLL
+
+  ; Refresh OAM
+  LDA #$00
+  STA OAMADDR
+  LDA #$02
+  STA OAMDMA
+
+  RTS
 .endproc
 
 .proc load_palettes
@@ -283,7 +292,69 @@ etc:
   RTS
 .endproc
 
+.proc go_to_playing
+  LDA #game_states::playing
+  STA game_state
+
+  LDA #$00
+  STA PPUCTRL ; disable NMI
+  STA PPUMASK ; disable rendering
+
+  LDA PPUSTATUS
+  LDA #$20
+  STA PPUADDR
+  LDA #$00
+  STA PPUADDR
+
+  LDA #<nametable_main
+  STA rle_ptr
+  LDA #>nametable_main
+  STA rle_ptr+1
+  JSR unrle
+
+  ; init snek
+  LDA #$00
+  STA snek_tail
+  LDA #$04
+  STA snek_head
+
+  ; snek coordinates = screen tile coordinates
+  LDA #9
+  STA snek_y
+  STA snek_y+1
+  STA snek_y+2
+  STA snek_y+3
+
+  LDA #14
+  STA snek_x
+  LDA #15
+  STA snek_x+1
+  LDA #16
+  STA snek_x+2
+  LDA #17
+  STA snek_x+3
+
+  VBLANK
+
+  LDA #%10010000  ; turn on NMIs, sprites use first pattern table
+  STA PPUCTRL
+  LDA #%00011110  ; turn on screen
+  STA PPUMASK
+
+  RTS
+.endproc
+
 .proc waiting_to_start
+  JSR readjoy
+  LDA pressed_buttons
+  AND #BUTTON_START
+  BEQ :+
+  JSR go_to_playing
+:
+  RTS
+.endproc
+
+.proc playing
   JSR readjoy
   LDA pressed_buttons
   AND #BUTTON_START
@@ -291,7 +362,6 @@ etc:
 :
   RTS
 .endproc
-
 
 .proc display_metasprite
   ; input: (addr_ptr) = metasprite pointer
@@ -336,9 +406,11 @@ return:
 
 game_state_handlers_l:
   .byte <(waiting_to_start-1)
+  .byte <(playing-1)
 
 game_state_handlers_h:
   .byte >(waiting_to_start-1)
+  .byte >(playing-1)
 
 palettes:
 .incbin "../assets/bg-palettes.pal"
