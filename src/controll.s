@@ -83,6 +83,12 @@ oam_sprites:
   right
 .endenum
 
+.enum collidable_type
+  nothing
+  wall
+  ; TODO - maybe add more
+.endenum
+
 .importzp buttons
 .importzp last_frame_buttons
 .importzp released_buttons
@@ -117,6 +123,11 @@ snek_delay: .res 1
 snek_frame_counter: .res 1
 snek_direction: .res 1
 snek_growth: .res 1
+
+; precomputed collidable objects, indexed by snek head directions
+collidable_per_direction: .res 4
+; flag telling if we should recompute collidable_per_direction
+precomputed_are_dirty: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
@@ -227,6 +238,7 @@ forever:
   JSR FamiToneUpdate
 
 etc:
+  JSR off_frame_processing
   JMP forever
 .endproc
 
@@ -354,9 +366,12 @@ etc:
 
   LDA #directions::right
   STA snek_direction
-
+  
   LDA #$00
   STA snek_growth
+
+  LDA #$01
+  STA precomputed_are_dirty
 
   VBLANK
 
@@ -487,6 +502,20 @@ skip_delete_old_tail:
   ; refresh frame counter
   LDA snek_delay
   STA snek_frame_counter
+  RTS
+.endproc
+
+.proc off_frame_processing
+  LDA game_state
+  CMP #game_states::playing
+  BEQ :+
+  RTS
+  :
+
+  LDA precomputed_are_dirty
+  BEQ skip_precomputing
+  
+skip_precomputing:
   RTS
 .endproc
 
