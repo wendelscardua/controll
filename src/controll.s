@@ -2,6 +2,7 @@
 .include "header.inc"
 
 .feature force_range
+.linecont +
 
 ; famitone2 config
 FT_PAL_SUPPORT=0
@@ -534,6 +535,84 @@ skip_delete_old_tail:
   ADC delta_ppu_h, X
   STA target_ppu_h_per_direction, X
 
+  DEX
+  BPL @loop
+
+  precompute_collidables_per_direction:
+  ; X = directions, decreasing
+  LDX #$03
+@loop:
+  LDA target_ppu_h_per_direction, X
+  ; ppu_h goes from 20 to 22
+
+  ; $22 is the first row below arena
+  CMP #$22
+  BNE @ppu_h_20_or_21
+@ppu_h_22:
+  LDA #collidable_type::wall
+  JMP @next
+
+@ppu_h_20_or_21:
+  CMP #$20
+  BNE @ppu_h_21
+@ppu_h_20:
+  ; x >= $24 && x <= $3B = top wall
+  LDA target_ppu_l_per_direction, X
+  CMP #$24
+  BCC @no_top_wall
+  CMP #$3C
+  BCS @no_top_wall
+@top_wall:
+  LDA #collidable_type::wall
+  JMP @next
+@no_top_wall:
+@ppu_h_21:
+  ; for ppu_h 20 and 21, ppu_l values for left/right walls are the same
+
+  ; left wall ppu l = $03, $23, $43, $63, $83, $a3, $c3, $e3
+  ; aka AND #%00011111 == %00000011
+  ; right wall ppu l = $1c, $3c, $5c, $7c, $9c, $bc, $dc, $fc
+  ; aka AND #%00011111 == %00011100
+
+  LDA target_ppu_l_per_direction, X
+  AND #%00011111
+  CMP #%00000011
+  BNE @no_left
+  LDA #collidable_type::wall
+  JMP @next
+@no_left:
+  CMP #%00011100
+  BNE @no_wall
+  LDA #collidable_type::wall
+  JMP @next
+@no_wall:
+
+  ; snek collision
+  LDY snek_tail
+@snek_loop:
+  LDA snek_ppu_h, Y
+  CMP target_ppu_h_per_direction, X
+  BNE @snext
+  LDA snek_ppu_l, Y
+  CMP target_ppu_l_per_direction, X
+  BNE @snext
+  LDA #collidable_type::wall
+  JMP @next
+@snext:
+  CPY snek_head
+  BEQ @end_snek_loop
+
+  INY
+  CPY #SNEK_QUEUE_SIZE
+  BNE @snek_loop
+  LDY #$00
+  JMP @snek_loop
+@end_snek_loop:
+
+  LDA #collidable_type::nothing
+  JMP @next
+@next:
+  STA collidable_per_direction, X
   DEX
   BPL @loop
 
