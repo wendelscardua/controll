@@ -126,7 +126,10 @@ snek_growth: .res 1
 
 ; precomputed collidable objects, indexed by snek head directions
 collidable_per_direction: .res 4
-; flag telling if we should recompute collidable_per_direction
+target_ppu_h_per_direction: .res 4
+target_ppu_l_per_direction: .res 4
+
+; flag telling if we should recompute stuff
 precomputed_are_dirty: .res 1
 
 .segment "BSS"
@@ -470,12 +473,9 @@ skip_delete_old_tail:
   
   ; get new head x,y
   LDX snek_direction
-  CLC
-  LDA delta_ppu_l, X
-  ADC ppu_addr_ptr
+  LDA target_ppu_l_per_direction, X
   STA ppu_addr_ptr
-  LDA delta_ppu_h, X
-  ADC ppu_addr_ptr+1
+  LDA target_ppu_h_per_direction, X
   STA ppu_addr_ptr+1
 
   ; draw new head
@@ -499,6 +499,11 @@ skip_delete_old_tail:
   LDA ppu_addr_ptr+1
   STA snek_ppu_h, X
 
+  ; mark precomputed data as dirty
+  ; XXX - surely we'll have precomputed before the next frame
+  ;       so this shouldn't overflow
+  INC precomputed_are_dirty
+
   ; refresh frame counter
   LDA snek_delay
   STA snek_frame_counter
@@ -514,6 +519,26 @@ skip_delete_old_tail:
 
   LDA precomputed_are_dirty
   BEQ skip_precomputing
+
+  precompute_target_ppu_per_direction:
+  ; X = directions, decreasing
+  ; Y = snek head index
+  LDY snek_head  
+  LDX #$03
+@loop:
+  CLC
+  LDA snek_ppu_l, Y
+  ADC delta_ppu_l, X
+  STA target_ppu_l_per_direction, X
+  LDA snek_ppu_h, Y
+  ADC delta_ppu_h, X
+  STA target_ppu_h_per_direction, X
+
+  DEX
+  BPL @loop
+
+  LDA #$00
+  STA precomputed_are_dirty
   
 skip_precomputing:
   RTS
