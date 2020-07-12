@@ -116,6 +116,7 @@ snek_tail: .res 1
 snek_delay: .res 1
 snek_frame_counter: .res 1
 snek_direction: .res 1
+snek_growth: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
@@ -354,6 +355,9 @@ etc:
   LDA #directions::right
   STA snek_direction
 
+  LDA #$00
+  STA snek_growth
+
   VBLANK
 
   LDA #%10010000  ; turn on NMIs, sprites use first pattern table
@@ -411,7 +415,12 @@ etc:
   RTS
 :
 
-  ; while we know snek old tail, erase tail
+  ; while we know snek old tail, erase tail (unless growing)
+  LDA snek_growth
+  BEQ delete_old_tail
+  DEC snek_growth
+  JMP skip_delete_old_tail
+delete_old_tail:
   LDX snek_tail
   BIT PPUSTATUS
   LDA snek_ppu_h, X
@@ -430,6 +439,8 @@ etc:
   LDA #$00
   STA snek_tail
 :
+
+skip_delete_old_tail:
 
   ; while we know snek old head, replace head w/ body
   LDX snek_head
