@@ -446,6 +446,15 @@ etc:
   RTS
 :
 
+  LDY snek_direction
+
+  ; if we are going to collide, do something (game over? lose life? tbd)
+  LDA collidable_per_direction, Y
+  CMP #collidable_type::wall
+  BNE :+
+  KIL
+:
+
   ; while we know snek old tail, erase tail (unless growing)
   LDA snek_growth
   BEQ delete_old_tail
@@ -485,10 +494,9 @@ skip_delete_old_tail:
   STA PPUDATA
   
   ; get new head x,y
-  LDX snek_direction
-  LDA target_ppu_l_per_direction, X
+  LDA target_ppu_l_per_direction, Y
   STA ppu_addr_ptr
-  LDA target_ppu_h_per_direction, X
+  LDA target_ppu_h_per_direction, Y
   STA ppu_addr_ptr+1
 
   ; draw new head
