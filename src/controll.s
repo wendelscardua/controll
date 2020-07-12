@@ -404,11 +404,17 @@ etc:
   LDA pressed_buttons
   AND #BUTTON_UP
   BEQ :+
+  LDA snek_direction
+  CMP #directions::down
+  BEQ :+
   LDA #directions::up
   STA snek_direction
 :
   LDA pressed_buttons
   AND #BUTTON_DOWN
+  BEQ :+
+  LDA snek_direction
+  CMP #directions::up
   BEQ :+
   LDA #directions::down
   STA snek_direction
@@ -416,11 +422,17 @@ etc:
   LDA pressed_buttons
   AND #BUTTON_LEFT
   BEQ :+
+  LDA snek_direction
+  CMP #directions::right
+  BEQ :+
   LDA #directions::left
   STA snek_direction
 :
   LDA pressed_buttons
   AND #BUTTON_RIGHT
+  BEQ :+
+  LDA snek_direction
+  CMP #directions::left
   BEQ :+
   LDA #directions::right
   STA snek_direction
