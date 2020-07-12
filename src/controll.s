@@ -76,6 +76,13 @@ oam_sprites:
   playing
 .endenum
 
+.enum directions
+  up
+  down
+  left
+  right
+.endenum
+
 .importzp buttons
 .importzp last_frame_buttons
 .importzp released_buttons
@@ -100,10 +107,15 @@ debug_x: .res 1
 debug_y: .res 1
 debug_a: .res 1
 
-snek_x: .res 32
-snek_y: .res 32
+SNEK_QUEUE_SIZE = 32
+snek_ppu_l: .res SNEK_QUEUE_SIZE
+snek_ppu_h: .res SNEK_QUEUE_SIZE
 snek_head: .res 1
 snek_tail: .res 1
+
+snek_delay: .res 1
+snek_frame_counter: .res 1
+snek_direction: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
@@ -315,24 +327,32 @@ etc:
   ; init snek
   LDA #$00
   STA snek_tail
-  LDA #$04
+  LDA #$03
   STA snek_head
 
-  ; snek coordinates = screen tile coordinates
-  LDA #9
-  STA snek_y
-  STA snek_y+1
-  STA snek_y+2
-  STA snek_y+3
+  ; snek ppu coordinates
+  LDA #$21
+  STA snek_ppu_h
+  STA snek_ppu_h+1
+  STA snek_ppu_h+2
+  STA snek_ppu_h+3
 
-  LDA #14
-  STA snek_x
-  LDA #15
-  STA snek_x+1
-  LDA #16
-  STA snek_x+2
-  LDA #17
-  STA snek_x+3
+  LDA #$2e
+  STA snek_ppu_l
+  LDA #$2f
+  STA snek_ppu_l+1
+  LDA #$30
+  STA snek_ppu_l+2
+  LDA #$31
+  STA snek_ppu_l+3
+
+  ; TODO variable speed
+  LDA #24
+  STA snek_delay
+  STA snek_frame_counter
+
+  LDA #directions::right
+  STA snek_direction
 
   VBLANK
 
@@ -355,11 +375,107 @@ etc:
 .endproc
 
 .proc playing
+  JSR update_snek
+
   JSR readjoy
   LDA pressed_buttons
-  AND #BUTTON_START
+  AND #BUTTON_UP
   BEQ :+
+  LDA #directions::up
+  STA snek_direction
 :
+  LDA pressed_buttons
+  AND #BUTTON_DOWN
+  BEQ :+
+  LDA #directions::down
+  STA snek_direction
+:
+  LDA pressed_buttons
+  AND #BUTTON_LEFT
+  BEQ :+
+  LDA #directions::left
+  STA snek_direction
+:
+  LDA pressed_buttons
+  AND #BUTTON_RIGHT
+  BEQ :+
+  LDA #directions::right
+  STA snek_direction
+:
+  RTS
+.endproc
+
+.proc update_snek
+  DEC snek_frame_counter
+  BEQ :+
+  RTS
+:
+
+  ; while we know snek old tail, erase tail
+  LDX snek_tail
+  BIT PPUSTATUS
+  LDA snek_ppu_h, X
+  STA PPUADDR
+  LDA snek_ppu_l, X
+  STA PPUADDR
+  LDA #$60 ; empty arena tile
+  STA PPUDATA
+
+  ; dequeue tail
+  ; TODO - if optimization is necessary, count head/tail backwards
+  INC snek_tail
+  LDA snek_tail
+  CMP #SNEK_QUEUE_SIZE
+  BNE :+
+  LDA #$00
+  STA snek_tail
+:
+
+  ; while we know snek old head, replace head w/ body
+  LDX snek_head
+  LDA snek_ppu_h, X
+  STA PPUADDR
+  STA ppu_addr_ptr+1
+  LDA snek_ppu_l, X
+  STA PPUADDR
+  STA ppu_addr_ptr
+  LDA #$81 ; body tile
+  STA PPUDATA
+  
+  ; get new head x,y
+  LDX snek_direction
+  CLC
+  LDA delta_ppu_l, X
+  ADC ppu_addr_ptr
+  STA ppu_addr_ptr
+  LDA delta_ppu_h, X
+  ADC ppu_addr_ptr+1
+  STA ppu_addr_ptr+1
+
+  ; draw new head
+  ; (implicit LDA ppu_addr_ptr+1)
+  STA PPUADDR
+  LDA ppu_addr_ptr
+  STA PPUADDR
+  LDA #$80 ; head tile
+  STA PPUDATA
+
+  ; enqueue new head
+  INC snek_head
+  LDX snek_head
+  CPX #SNEK_QUEUE_SIZE
+  BNE :+
+  LDX #$00
+  STX snek_head
+:
+  LDA ppu_addr_ptr
+  STA snek_ppu_l, X
+  LDA ppu_addr_ptr+1
+  STA snek_ppu_h, X
+
+  ; refresh frame counter
+  LDA snek_delay
+  STA snek_frame_counter
   RTS
 .endproc
 
@@ -411,6 +527,17 @@ game_state_handlers_l:
 game_state_handlers_h:
   .byte >(waiting_to_start-1)
   .byte >(playing-1)
+
+; what to add to ppu address by direction
+; up:    -$0020 = $FFE0
+; down:   $0020
+; left:  -$0001 = $FFFF
+; right:  $0001
+
+delta_ppu_h:
+  .byte $ff, $00, $ff, $00
+delta_ppu_l:
+  .byte $e0, $20, $ff, $01
 
 palettes:
 .incbin "../assets/bg-palettes.pal"
