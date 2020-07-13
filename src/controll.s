@@ -387,6 +387,44 @@ etc:
   RTS
 .endproc
 
+.proc go_to_game_over
+  LDA #game_states::waiting_to_start
+  STA game_state
+
+  LDA #$00
+  STA PPUCTRL ; disable NMI
+  STA PPUMASK ; disable rendering
+
+  LDA PPUSTATUS
+  LDY snek_head
+  LDA snek_ppu_h, Y
+  STA PPUADDR
+  LDA snek_ppu_l, Y
+  STA PPUADDR
+  LDA #$83
+  STA PPUDATA
+
+  LDA #$22
+  STA PPUADDR
+  LDA #$40
+  STA PPUADDR
+
+  LDA #<nametable_game_over
+  STA rle_ptr
+  LDA #>nametable_game_over
+  STA rle_ptr+1
+  JSR unrle
+
+  VBLANK
+
+  LDA #%10010000  ; turn on NMIs, sprites use first pattern table
+  STA PPUCTRL
+  LDA #%00011110  ; turn on screen
+  STA PPUMASK
+
+  RTS
+.endproc
+
 .proc waiting_to_start
   JSR readjoy
   LDA pressed_buttons
@@ -452,7 +490,8 @@ etc:
   LDA collidable_per_direction, Y
   CMP #collidable_type::wall
   BNE :+
-  KIL
+  JSR go_to_game_over
+  RTS
 :
 
   ; while we know snek old tail, erase tail (unless growing)
@@ -715,6 +754,8 @@ strings:
 
 nametable_main: .incbin "../assets/nametables/main.rle"
 nametable_title: .incbin "../assets/nametables/title.rle"
+nametable_game_over: .incbin "../assets/nametables/game_over.rle"
 
 .segment "CHR"
 .incbin "../assets/graphics.chr"
+
