@@ -125,7 +125,6 @@ debug_a: .res 1
 
 ; on screen buttons data
 command_per_button: .res 6
-button_per_command: .res 6
 sprite_x_per_command: .res 6
 sprite_y_per_command: .res 6
 target_sprite_x_per_command: .res 6
@@ -364,7 +363,6 @@ etc:
   LDX #$05
 :
   TXA
-  STA button_per_command, X
   STA command_per_button, X
   LDA command_positions_x, X
   STA sprite_x_per_command, X
