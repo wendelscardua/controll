@@ -428,7 +428,7 @@ etc:
   STA game_state
 
   ; erase sprites
-  LDX sprite_counter
+  LDX #$00
   LDA #$F0
 :
   STA oam_sprites+Sprite::ycoord, X
@@ -539,6 +539,9 @@ etc:
 .endproc
 
 .proc update_command_sprites
+  LDA #$00
+  STA sprite_counter
+
   ; X = commands index
   LDX #$05
 loop:
@@ -559,8 +562,6 @@ loop:
 .endproc
 
 .proc playing
-  LDA #$00
-  STA sprite_counter
   JSR update_snek
 
   JSR readjoy
