@@ -84,6 +84,15 @@ oam_sprites:
   right
 .endenum
 
+.enum button_type
+  up
+  down
+  left
+  right
+  a_action
+  b_action
+.endenum
+
 .enum collidable_type
   nothing
   wall
@@ -113,6 +122,16 @@ sprite_counter: .res 1
 debug_x: .res 1
 debug_y: .res 1
 debug_a: .res 1
+
+; on screen buttons data
+command_per_button: .res 6
+button_per_command: .res 6
+sprite_x_per_command: .res 6
+sprite_y_per_command: .res 6
+target_sprite_x_per_command: .res 6
+target_sprite_y_per_command: .res 6
+
+dirty_sprite_data: .res 1
 
 SNEK_QUEUE_SIZE = 32
 snek_ppu_l: .res SNEK_QUEUE_SIZE
@@ -341,6 +360,25 @@ etc:
   STA rle_ptr+1
   JSR unrle
 
+  ; init buttons
+  LDX #$05
+:
+  TXA
+  STA button_per_command, X
+  STA command_per_button, X
+  LDA command_positions_x, X
+  STA sprite_x_per_command, X
+  STA target_sprite_x_per_command, X
+  LDA command_positions_y, X
+  STA sprite_y_per_command, X
+  STA target_sprite_y_per_command, X
+  
+  DEX
+  BPL :-
+
+  LDA #$01
+  STA dirty_sprite_data
+
   ; init snek
   LDA #$00
   STA snek_tail
@@ -435,45 +473,137 @@ etc:
   RTS
 .endproc
 
-.proc playing
-  JSR update_snek
+.proc decode_command
+  ; converts button (what was pressed) into command (what to do)
+  ; input: A = pressed button (from enum button_type)
+  TAX
+  LDA command_per_button, X
+  TAX
+  LDA command_handlers_h, X
+  PHA
+  LDA command_handlers_l, X
+  PHA
+  RTS
+.endproc
 
-  JSR readjoy
-  LDA pressed_buttons
-  AND #BUTTON_UP
-  BEQ :+
+.proc command_up
   LDA snek_direction
   CMP #directions::down
   BEQ :+
   LDA #directions::up
   STA snek_direction
 :
-  LDA pressed_buttons
-  AND #BUTTON_DOWN
-  BEQ :+
+  RTS
+.endproc
+
+.proc command_down
   LDA snek_direction
   CMP #directions::up
   BEQ :+
   LDA #directions::down
   STA snek_direction
 :
-  LDA pressed_buttons
-  AND #BUTTON_LEFT
-  BEQ :+
+  RTS
+.endproc
+
+.proc command_left
   LDA snek_direction
   CMP #directions::right
   BEQ :+
   LDA #directions::left
   STA snek_direction
 :
-  LDA pressed_buttons
-  AND #BUTTON_RIGHT
-  BEQ :+
+  RTS
+.endproc
+
+.proc command_right
   LDA snek_direction
   CMP #directions::left
   BEQ :+
   LDA #directions::right
   STA snek_direction
+:
+  RTS
+.endproc
+
+.proc command_noop
+  RTS
+.endproc
+
+.proc update_command_sprites
+  ; X = commands index
+  LDX #$05
+loop:
+  LDA sprite_x_per_command, X
+  STA temp_x
+  LDA sprite_y_per_command, X
+  STA temp_y
+  LDA metasprite_l_per_command, X
+  STA addr_ptr
+  LDA metasprite_h_per_command, X
+  STA addr_ptr+1
+  save_regs
+  JSR display_metasprite  
+  restore_regs
+  DEX
+  BPL loop
+  RTS
+.endproc
+
+.proc playing
+  LDA #$00
+  STA sprite_counter
+  JSR update_snek
+
+  JSR readjoy
+  LDA pressed_buttons
+  AND #BUTTON_UP
+  BEQ :+
+  LDA #button_type::up
+  JSR decode_command
+  RTS
+:
+  LDA pressed_buttons
+  AND #BUTTON_DOWN
+  BEQ :+
+  LDA #button_type::down
+  JSR decode_command
+  RTS
+:
+  LDA pressed_buttons
+  AND #BUTTON_LEFT
+  BEQ :+
+  LDA #button_type::left
+  JSR decode_command
+  RTS
+:
+  LDA pressed_buttons
+  AND #BUTTON_RIGHT
+  BEQ :+
+  LDA #button_type::right
+  JSR decode_command
+  RTS
+:
+  LDA pressed_buttons
+  AND #BUTTON_RIGHT
+  BEQ :+
+  LDA #button_type::right
+  JSR decode_command
+  RTS
+:
+  LDA pressed_buttons
+  AND #BUTTON_A
+  BEQ :+
+  LDA #button_type::a_action
+  JSR decode_command
+  RTS
+:
+  LDA pressed_buttons
+  AND #BUTTON_B
+  BEQ :+
+  LDA #button_type::b_action
+  JSR decode_command
+  ; RTS
 :
   RTS
 .endproc
@@ -679,6 +809,13 @@ skip_delete_old_tail:
   STA precomputed_are_dirty
   
 skip_precomputing:
+
+  LDA dirty_sprite_data
+  BEQ :+
+  JSR update_command_sprites
+  LDA #$00
+  STA dirty_sprite_data
+:
   RTS
 .endproc
 
@@ -731,6 +868,21 @@ game_state_handlers_h:
   .byte >(waiting_to_start-1)
   .byte >(playing-1)
 
+command_handlers_l:
+  .byte <(command_up-1)
+  .byte <(command_down-1)
+  .byte <(command_left-1)
+  .byte <(command_right-1)
+  .byte <(command_noop-1)
+  .byte <(command_noop-1)
+command_handlers_h:
+  .byte >(command_up-1)
+  .byte >(command_down-1)
+  .byte >(command_left-1)
+  .byte >(command_right-1)
+  .byte >(command_noop-1)
+  .byte >(command_noop-1)
+
 ; what to add to ppu address by direction
 ; up:    -$0020 = $FFE0
 ; down:   $0020
@@ -755,6 +907,29 @@ strings:
 nametable_main: .incbin "../assets/nametables/main.rle"
 nametable_title: .incbin "../assets/nametables/title.rle"
 nametable_game_over: .incbin "../assets/nametables/game_over.rle"
+
+command_positions_x:
+  .byte $40, $40, $20, $60, $90, $b0
+
+command_positions_y:
+  .byte $90, $d0, $b0, $b0, $a0, $a0
+
+metasprite_l_per_command:
+  .byte <metasprite_0_data
+  .byte <metasprite_1_data
+  .byte <metasprite_2_data
+  .byte <metasprite_3_data
+  .byte <metasprite_4_data
+  .byte <metasprite_4_data
+  
+metasprite_h_per_command:
+  .byte >metasprite_0_data
+  .byte >metasprite_1_data
+  .byte >metasprite_2_data
+  .byte >metasprite_3_data
+  .byte >metasprite_4_data
+  .byte >metasprite_4_data
+
 
 .segment "CHR"
 .incbin "../assets/graphics.chr"
