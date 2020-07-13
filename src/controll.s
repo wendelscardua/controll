@@ -636,6 +636,7 @@ second_loop:
   STA dirty_sprite_data
 
   LDX #$05
+  STX switcheroo
 @loop:
 
   LDA sprite_x_per_command, X
@@ -656,8 +657,7 @@ second_loop:
   CMP target_sprite_y_per_command, X
   BNE @not_finished
 @finished:
-  LDA #$00
-  STA switcheroo
+  DEC switcheroo
   JMP @next
 @not_finished:
 
