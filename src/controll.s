@@ -103,6 +103,7 @@ oam_sprites:
 .importzp last_frame_buttons
 .importzp released_buttons
 .importzp pressed_buttons
+.importzp rng_seed
 .importzp rle_ptr
 
 ; zp vars
@@ -132,6 +133,8 @@ target_sprite_y_per_command: .res 6
 
 dirty_sprite_data: .res 1
 
+switcheroo: .res 1
+
 SNEK_QUEUE_SIZE = 32
 snek_ppu_l: .res SNEK_QUEUE_SIZE
 snek_ppu_h: .res SNEK_QUEUE_SIZE
@@ -158,6 +161,7 @@ precomputed_are_dirty: .res 1
 
 .import reset_handler
 .import readjoy
+.import rand
 .import unrle
 
 .import music_data
@@ -246,6 +250,12 @@ clear_ram:
   LDA #1
   JSR FamiToneSfxInit
 
+  ; init rng
+  LDA #$a9
+  STA rng_seed
+  LDA #$73
+  STA rng_seed+1
+
   ; JSR go_to_title ; TODO - restore when ready
   JSR go_to_playing
 
@@ -261,6 +271,7 @@ forever:
 
 etc:
   JSR off_frame_processing
+  JSR rand ; shuffle rng around
   JMP forever
 .endproc
 
@@ -376,6 +387,9 @@ etc:
 
   LDA #$01
   STA dirty_sprite_data
+
+  LDA #$00
+  STA switcheroo
 
   ; init snek
   LDA #$00
@@ -561,10 +575,119 @@ loop:
   RTS
 .endproc
 
+.proc switch_random_buttons
+  LDA switcheroo
+  BEQ :+
+  RTS
+:
+  INC switcheroo
+
+first_loop:
+  LDA rng_seed
+  AND #%111
+  CMP #$06
+  BCC :+
+  JSR rand
+  JMP first_loop
+:
+  STA temp_x
+  
+second_loop:
+  JSR rand
+  LDA rng_seed
+  AND #%111
+  CMP #$06
+  BCS second_loop
+  CMP temp_x
+  BEQ second_loop
+  STA temp_y
+
+  LDX temp_x
+  LDY temp_y
+  
+  LDA command_per_button, X
+  PHA
+  LDA command_per_button, Y
+  STA command_per_button, X
+  PLA
+  STA command_per_button, Y
+
+  LDA sprite_x_per_command, X
+  STA target_sprite_x_per_command, Y
+  LDA sprite_y_per_command, X
+  STA target_sprite_y_per_command, Y
+
+  LDA sprite_x_per_command, Y
+  STA target_sprite_x_per_command, X
+  LDA sprite_y_per_command, Y
+  STA target_sprite_y_per_command, X
+
+  INC dirty_sprite_data
+
+  RTS
+.endproc
+
+.proc update_command_positions
+  LDA switcheroo
+  BNE :+
+  RTS
+:
+  LDA #$01
+  STA dirty_sprite_data
+
+  LDX #$05
+@loop:
+
+  LDA sprite_x_per_command, X
+  CMP target_sprite_x_per_command, X
+
+  BEQ @check_y
+
+  BCC @move_right
+@move_left:
+  DEC sprite_x_per_command, X
+  JMP @next
+@move_right:
+  INC sprite_x_per_command, X
+  JMP @next
+
+@check_y:
+  LDA sprite_y_per_command, X
+  CMP target_sprite_y_per_command, X
+  BNE @not_finished
+@finished:
+  LDA #$00
+  STA switcheroo
+  JMP @next
+@not_finished:
+
+  BCC @move_down
+@move_up:
+  DEC sprite_y_per_command, X
+  JMP @next
+@move_down:
+  INC sprite_y_per_command, X
+  JMP @next
+
+@next:
+  DEX
+  BPL @loop
+
+  RTS
+.endproc
+
 .proc playing
   JSR update_snek
+  JSR update_command_positions
 
   JSR readjoy
+  .ifdef DEBUG
+  LDA pressed_buttons
+  AND #BUTTON_SELECT
+  BEQ :+
+  JSR switch_random_buttons
+:
+  .endif
   LDA pressed_buttons
   AND #BUTTON_UP
   BEQ :+
