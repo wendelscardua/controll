@@ -429,6 +429,16 @@ etc:
   LDA #game_states::waiting_to_start
   STA game_state
 
+  ; erase sprites
+  LDX sprite_counter
+  LDA #$F0
+:
+  STA oam_sprites+Sprite::ycoord, X
+  .repeat .sizeof(Sprite)
+  INX
+  .endrepeat
+  BNE :-
+
   LDA #$00
   STA PPUCTRL ; disable NMI
   STA PPUMASK ; disable rendering
