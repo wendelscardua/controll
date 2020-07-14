@@ -96,7 +96,8 @@ oam_sprites:
 .enum collidable_type
   nothing
   wall
-  ; TODO - maybe add more
+  small_coin
+  big_coin
 .endenum
 
 .importzp buttons
@@ -145,6 +146,14 @@ snek_delay: .res 1
 snek_frame_counter: .res 1
 snek_direction: .res 1
 snek_growth: .res 1
+
+; coins
+COINS_ARRAY_SIZE = 10
+coins_ppu_l: .res COINS_ARRAY_SIZE
+coins_ppu_h: .res COINS_ARRAY_SIZE
+coins_value: .res COINS_ARRAY_SIZE
+coins_count: .res 1
+coin_index_per_direction: .res 4
 
 ; precomputed collidable objects, indexed by snek head directions
 collidable_per_direction: .res 4
@@ -390,6 +399,10 @@ etc:
 
   LDA #$00
   STA switcheroo
+
+  ; init coins
+  LDA #$00
+  STA coins_count
 
   ; init snek
   LDA #$00
