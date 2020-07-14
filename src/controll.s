@@ -604,6 +604,11 @@ second_loop:
 
   LDX temp_x
   LDY temp_y
+
+  LDA command_per_button, X
+  STA temp_x
+  LDA command_per_button, Y
+  STA temp_y
   
   LDA command_per_button, X
   PHA
@@ -611,6 +616,9 @@ second_loop:
   STA command_per_button, X
   PLA
   STA command_per_button, Y
+
+  LDX temp_x
+  LDY temp_y
 
   LDA sprite_x_per_command, X
   STA target_sprite_x_per_command, Y
@@ -635,8 +643,10 @@ second_loop:
   LDA #$01
   STA dirty_sprite_data
 
+  LDA #$06
+  STA switcheroo
+
   LDX #$05
-  STX switcheroo
 @loop:
 
   LDA sprite_x_per_command, X
