@@ -23,6 +23,8 @@ FT_DPCM_OFF=$c000
 .endenum
 
 ; game config
+FIRST_SPAWN_DELAY = 10
+SPAWN_DELAY = 20
 
 ; debug - macros for NintendulatorDX interaction
 .ifdef DEBUG
@@ -147,13 +149,17 @@ snek_frame_counter: .res 1
 snek_direction: .res 1
 snek_growth: .res 1
 
-; coins
-COINS_ARRAY_SIZE = 10
-coins_ppu_l: .res COINS_ARRAY_SIZE
-coins_ppu_h: .res COINS_ARRAY_SIZE
-coins_value: .res COINS_ARRAY_SIZE
-coins_count: .res 1
-coin_index_per_direction: .res 4
+; coins / walls /enemies
+THINGS_ARRAY_SIZE = 24
+things_ppu_l: .res THINGS_ARRAY_SIZE
+things_ppu_h: .res THINGS_ARRAY_SIZE
+things_type: .res THINGS_ARRAY_SIZE
+things_count: .res 1
+thing_index_per_direction: .res 4
+
+; every X frames, spawn a thing
+thing_spawn_counter: .res 1
+next_thing_to_spawn: .res 1
 
 ; precomputed collidable objects, indexed by snek head directions
 collidable_per_direction: .res 4
@@ -400,9 +406,14 @@ etc:
   LDA #$00
   STA switcheroo
 
-  ; init coins
+  ; init things
+  LDA #FIRST_SPAWN_DELAY
+  STA thing_spawn_counter
+  LDA #collidable_type::small_coin
+  STA next_thing_to_spawn
+
   LDA #$00
-  STA coins_count
+  STA things_count
 
   ; init snek
   LDA #$00
@@ -791,8 +802,40 @@ delete_old_tail:
   STA PPUADDR
   LDA snek_ppu_l, X
   STA PPUADDR
+
+  LDA things_count
+  CMP #THINGS_ARRAY_SIZE
+  BEQ no_spawn
+
+  DEC thing_spawn_counter
+  BNE no_spawn
+  ; spawn thing where tail was (so we know (?) the player won't collide with it)
+  LDY next_thing_to_spawn
+  LDA tile_per_thing, Y
+  LDY things_count
+  STA PPUDATA
+
+  STA things_type, Y
+
+  LDA snek_ppu_h, X
+  STA things_ppu_h, Y
+  LDA snek_ppu_l, X
+  STA things_ppu_l, Y
+  INC things_count
+
+  LDA #collidable_type::nothing
+  STA next_thing_to_spawn
+
+  LDA #SPAWN_DELAY
+  STA thing_spawn_counter
+
+  LDY snek_direction ; restore cobbled Y
+  JMP dequeue_tail
+
+no_spawn:
   LDA #$60 ; empty arena tile
   STA PPUDATA
+dequeue_tail:
 
   ; dequeue tail
   ; TODO - if optimization is necessary, count head/tail backwards
@@ -860,7 +903,20 @@ skip_delete_old_tail:
   CMP #game_states::playing
   BEQ :+
   RTS
-  :
+:
+
+  LDA next_thing_to_spawn
+  BNE skip_thing_randomization
+
+  JSR rand
+  LDA rng_seed
+  AND #%11
+  BNE :+
+  LDA #collidable_type::small_coin
+:
+  STA next_thing_to_spawn
+
+skip_thing_randomization:
 
   LDA precomputed_are_dirty
   BEQ skip_precomputing
@@ -1068,6 +1124,12 @@ command_positions_x:
 
 command_positions_y:
   .byte $90, $d0, $b0, $b0, $a0, $a0
+
+tile_per_thing:
+  .byte $60 ; nothing
+  .byte $82 ; wall / enemy
+  .byte $8C ; small coin
+  .byte $8D ; big coin
 
 metasprite_l_per_command:
   .byte <metasprite_0_data
