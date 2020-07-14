@@ -25,6 +25,7 @@ FT_DPCM_OFF=$c000
 ; game config
 FIRST_SPAWN_DELAY = 10
 SPAWN_DELAY = 20
+SNEK_INITIAL_DELAY = 12
 
 ; debug - macros for NintendulatorDX interaction
 .ifdef DEBUG
@@ -147,6 +148,7 @@ snek_tail: .res 1
 snek_delay: .res 1
 snek_frame_counter: .res 1
 snek_direction: .res 1
+snek_length: .res 1
 snek_growth: .res 1
 
 ; coins / walls /enemies
@@ -168,6 +170,9 @@ target_ppu_l_per_direction: .res 4
 
 ; flag telling if we should recompute stuff
 precomputed_are_dirty: .res 1
+
+; flag for coin processing
+coin_buffer: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
@@ -414,12 +419,15 @@ etc:
 
   LDA #$00
   STA things_count
+  STA coin_buffer
 
   ; init snek
   LDA #$00
   STA snek_tail
   LDA #$03
   STA snek_head
+  LDA #$04
+  STA snek_length
 
   ; snek ppu coordinates
   LDA #$21
@@ -438,7 +446,7 @@ etc:
   STA snek_ppu_l+3
 
   ; TODO variable speed
-  LDA #24
+  LDA #SNEK_INITIAL_DELAY
   STA snek_delay
   STA snek_frame_counter
 
@@ -782,18 +790,27 @@ second_loop:
 
   LDY snek_direction
 
-  ; if we are going to collide, do something (game over? lose life? tbd)
+  ; if we are going to collide, game over
   LDA collidable_per_direction, Y
   CMP #collidable_type::wall
   BNE :+
   JSR go_to_game_over
   RTS
 :
+  CMP #collidable_type::nothing
+  BEQ :+
+  ; set reminder for off-frame score processing
+  STA coin_buffer
+:
 
   ; while we know snek old tail, erase tail (unless growing)
+  LDA snek_length
+  CMP #SNEK_QUEUE_SIZE
+  BEQ delete_old_tail
   LDA snek_growth
   BEQ delete_old_tail
   DEC snek_growth
+  INC snek_length
   JMP skip_delete_old_tail
 delete_old_tail:
   LDX snek_tail
@@ -905,6 +922,26 @@ skip_delete_old_tail:
   BEQ :+
   RTS
 :
+
+  LDA coin_buffer
+  BEQ skip_coin_buffer
+
+  CMP #collidable_type::small_coin
+  BNE :+
+  INC snek_growth
+  LDA #$00
+  STA coin_buffer
+  JMP skip_coin_buffer
+:
+  CMP #collidable_type::big_coin
+  BNE :+
+  INC snek_growth
+  INC snek_growth
+  LDA #$00
+  STA coin_buffer
+:
+
+skip_coin_buffer:
 
   LDA next_thing_to_spawn
   BNE skip_thing_randomization
