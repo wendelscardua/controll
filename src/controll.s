@@ -815,6 +815,7 @@ delete_old_tail:
   LDY things_count
   STA PPUDATA
 
+  LDA next_thing_to_spawn
   STA things_type, Y
 
   LDA snek_ppu_h, X
@@ -938,10 +939,12 @@ skip_thing_randomization:
   DEX
   BPL @loop
 
-  precompute_collidables_per_direction:
+precompute_collidables_per_direction:
   ; X = directions, decreasing
   LDX #$03
 @loop:
+  ; wall collision
+
   LDA target_ppu_h_per_direction, X
   ; ppu_h goes from 20 to 22
 
@@ -987,30 +990,12 @@ skip_thing_randomization:
   JMP @next
 @no_wall:
 
-  ; snek collision
-  LDY snek_tail
-@snek_loop:
-  LDA snek_ppu_h, Y
-  CMP target_ppu_h_per_direction, X
-  BNE @snext
-  LDA snek_ppu_l, Y
-  CMP target_ppu_l_per_direction, X
-  BNE @snext
-  LDA #collidable_type::wall
-  JMP @next
-@snext:
-  CPY snek_head
-  BEQ @end_snek_loop
+  JSR compute_snek_collision
+  BNE @next
 
-  INY
-  CPY #SNEK_QUEUE_SIZE
-  BNE @snek_loop
-  LDY #$00
-  JMP @snek_loop
-@end_snek_loop:
-
-  LDA #collidable_type::nothing
+  JSR compute_thing_collision
   JMP @next
+
 @next:
   STA collidable_per_direction, X
   DEX
@@ -1027,6 +1012,64 @@ skip_precomputing:
   LDA #$00
   STA dirty_sprite_data
 :
+  RTS
+.endproc
+
+.proc compute_snek_collision
+  ; input X = direction index
+  ; cobbles Y
+  ; returns object type in A
+
+  LDY snek_tail
+@snek_loop:
+  LDA snek_ppu_h, Y
+  CMP target_ppu_h_per_direction, X
+  BNE @snext
+  LDA snek_ppu_l, Y
+  CMP target_ppu_l_per_direction, X
+  BNE @snext
+  LDA #collidable_type::wall
+  RTS
+@snext:
+  CPY snek_head
+  BEQ @end_snek_loop
+
+  INY
+  CPY #SNEK_QUEUE_SIZE
+  BNE @snek_loop
+  LDY #$00
+  JMP @snek_loop
+@end_snek_loop:
+  LDA #collidable_type::nothing
+  RTS
+.endproc
+
+.proc compute_thing_collision
+  ; input X = direction index
+  ; cobbles Y
+  ; returns object type in A
+
+  LDY things_count
+  DEY
+  BMI @no_collision
+
+@things_loop:
+  LDA target_ppu_h_per_direction, X
+  CMP things_ppu_h, Y
+  BNE @next_thing
+  LDA target_ppu_l_per_direction, X
+  CMP things_ppu_l, Y
+  BNE @next_thing
+  TYA
+  STA thing_index_per_direction, X
+  LDA things_type, Y
+  RTS
+@next_thing:
+  DEY
+  BPL @things_loop
+
+@no_collision:
+  LDA #collidable_type::nothing
   RTS
 .endproc
 
