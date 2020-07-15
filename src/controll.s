@@ -27,6 +27,9 @@ FIRST_SPAWN_DELAY = 10
 SPAWN_DELAY = 20
 SNEK_INITIAL_DELAY = 12
 
+SNEK_QUEUE_SIZE = 32
+THINGS_ARRAY_SIZE = 5
+
 ; debug - macros for NintendulatorDX interaction
 .ifdef DEBUG
 .macro debugOut str
@@ -139,7 +142,6 @@ dirty_sprite_data: .res 1
 
 switcheroo: .res 1
 
-SNEK_QUEUE_SIZE = 32
 snek_ppu_l: .res SNEK_QUEUE_SIZE
 snek_ppu_h: .res SNEK_QUEUE_SIZE
 snek_head: .res 1
@@ -152,7 +154,6 @@ snek_length: .res 1
 snek_growth: .res 1
 
 ; coins / walls /enemies
-THINGS_ARRAY_SIZE = 24
 things_ppu_l: .res THINGS_ARRAY_SIZE
 things_ppu_h: .res THINGS_ARRAY_SIZE
 things_type: .res THINGS_ARRAY_SIZE
@@ -173,6 +174,10 @@ precomputed_are_dirty: .res 1
 
 ; flag for coin processing
 coin_buffer: .res 1
+
+; ppu coordinates to erase (deprecated walls)
+erase_ppu_h: .res 1
+erase_ppu_l: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
@@ -419,6 +424,9 @@ etc:
 
   LDA #$00
   STA things_count
+  STA erase_ppu_h
+  STA erase_ppu_l
+  
   LDA #$FF
   STA coin_buffer
 
@@ -720,6 +728,17 @@ second_loop:
 .endproc
 
 .proc playing
+  LDA erase_ppu_h
+  BEQ :+
+  BIT PPUSTATUS
+  STA PPUADDR
+  LDA erase_ppu_l
+  STA PPUADDR
+  LDA #$60
+  STA PPUDATA
+  LDA #$00
+  STA erase_ppu_h
+:
   JSR update_snek
   JSR update_command_positions
 
@@ -956,6 +975,45 @@ delete_thing:
   STA coin_buffer
 
 skip_coin_buffer:
+
+  LDA things_count
+  CMP #THINGS_ARRAY_SIZE
+  BNE skip_full_array
+
+  ; find any wall to delete
+  LDX #$00
+@loop:
+  LDA things_type, X
+  CMP #collidable_type::wall
+  BNE @next
+
+  DEC things_count
+  BEQ skip_full_array
+  CPX things_count
+  BEQ skip_full_array
+
+  LDA things_ppu_l, X
+  STA erase_ppu_l
+  LDA things_ppu_h, X
+  STA erase_ppu_h
+
+  LDY things_count
+
+  LDA things_type, Y
+  STA things_type, X
+  LDA things_ppu_l, Y
+  STA things_ppu_l, X
+  LDA things_ppu_h, Y
+  STA things_ppu_h, X
+  JMP skip_full_array
+
+@next:
+  INX
+  CPX things_count
+  BNE @loop
+
+
+skip_full_array:
 
   LDA next_thing_to_spawn
   BNE skip_thing_randomization
