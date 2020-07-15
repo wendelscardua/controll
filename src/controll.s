@@ -697,10 +697,14 @@ second_loop:
 
   BCC @move_right
 @move_left:
+  .repeat 2
   DEC sprite_x_per_command, X
+  .endrepeat
   JMP @next
 @move_right:
+  .repeat 2
   INC sprite_x_per_command, X
+  .endrepeat
   JMP @next
 
 @check_y:
@@ -714,10 +718,14 @@ second_loop:
 
   BCC @move_down
 @move_up:
+  .repeat 2
   DEC sprite_y_per_command, X
+  .endrepeat
   JMP @next
 @move_down:
+  .repeat 2
   INC sprite_y_per_command, X
+  .endrepeat
   JMP @next
 
 @next:
