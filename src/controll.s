@@ -27,6 +27,9 @@ FIRST_SPAWN_DELAY = 10
 SPAWN_DELAY = 20
 SNEK_INITIAL_DELAY = 12
 
+SWITCH_INITIAL_TIMER = 3
+SWITCH_TIMER = 10
+
 SNEK_QUEUE_SIZE = 32
 THINGS_ARRAY_SIZE = 5
 
@@ -141,6 +144,7 @@ target_sprite_y_per_command: .res 6
 dirty_sprite_data: .res 1
 
 switcheroo: .res 1
+switch_timer: .res 1
 
 snek_ppu_l: .res SNEK_QUEUE_SIZE
 snek_ppu_h: .res SNEK_QUEUE_SIZE
@@ -429,6 +433,9 @@ etc:
   
   LDA #$FF
   STA coin_buffer
+
+  LDA #SWITCH_INITIAL_TIMER
+  STA switch_timer
 
   ; init snek
   LDA #$00
@@ -954,6 +961,17 @@ skip_delete_old_tail:
 
   LDX coin_buffer
   BMI skip_coin_buffer
+
+  ; before using coin buffer, since it's a pickup we check switch timer as well
+  DEC switch_timer
+  BNE :+
+  JSR switch_random_buttons
+  LDA #SWITCH_TIMER
+  JSR rand
+  AND #%111
+  ADC #SWITCH_TIMER
+  STA switch_timer
+:
 
   LDA things_type, X
 
