@@ -419,6 +419,7 @@ etc:
 
   LDA #$00
   STA things_count
+  LDA #$FF
   STA coin_buffer
 
   ; init snek
@@ -800,6 +801,7 @@ second_loop:
   CMP #collidable_type::nothing
   BEQ :+
   ; set reminder for off-frame score processing
+  LDA thing_index_per_direction, Y
   STA coin_buffer
 :
 
@@ -923,23 +925,35 @@ skip_delete_old_tail:
   RTS
 :
 
-  LDA coin_buffer
-  BEQ skip_coin_buffer
+  LDX coin_buffer
+  BMI skip_coin_buffer
+
+  LDA things_type, X
 
   CMP #collidable_type::small_coin
   BNE :+
   INC snek_growth
-  LDA #$00
-  STA coin_buffer
-  JMP skip_coin_buffer
+  JMP delete_thing
 :
   CMP #collidable_type::big_coin
-  BNE :+
+  BNE skip_coin_buffer
   INC snek_growth
   INC snek_growth
-  LDA #$00
-  STA coin_buffer
+delete_thing:
+  DEC things_count
+  BEQ :+
+  CPX things_count
+  BEQ :+
+  LDY things_count
+  LDA things_type, Y
+  STA things_type, X
+  LDA things_ppu_l, Y
+  STA things_ppu_l, X
+  LDA things_ppu_h, Y
+  STA things_ppu_h, X
 :
+  LDA #$FF
+  STA coin_buffer
 
 skip_coin_buffer:
 
