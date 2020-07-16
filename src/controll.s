@@ -163,6 +163,9 @@ clock: .res 2
 ; score
 score_digits: .res 5
 score_buffer: .res 1
+
+high_score_digits: .res 5
+
 ; level
 level_digits: .res 2
 level_hex: .res 1 ; binary level (-1, so first level is $00)
@@ -882,6 +885,25 @@ second_loop:
   JMP @loop
 @endloop:
 
+  LDX #$00
+@comploop:
+  LDA score_digits, X
+  CMP high_score_digits, X
+  BNE :+
+  INX
+  CPX #$05
+  BNE @comploop
+  JMP skip_score_buffer
+:
+  BCC skip_score_buffer
+
+@copyloop:
+  LDA score_digits, X
+  STA high_score_digits, X
+  INX
+  CPX #$05
+  BNE @copyloop
+
 skip_score_buffer:
 
   ; non snek frame, we have time to refresh score (?)
@@ -903,7 +925,17 @@ skip_score_buffer:
   STA PPUDATA
   LDA level_digits+1
   STA PPUDATA
-  
+
+  BIT PPUSTATUS
+  LDA #$22
+  STA PPUADDR
+  LDA #$2b
+  STA PPUADDR
+  .repeat 5, index
+  LDA high_score_digits+index
+  STA PPUDATA
+  .endrepeat
+
   RTS
 .endproc
 
