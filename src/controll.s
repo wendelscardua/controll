@@ -30,9 +30,9 @@ SWITCH_INITIAL_TIMER = 3
 SWITCH_TIMER = 10
 
 SNEK_QUEUE_SIZE = 32
-THINGS_ARRAY_SIZE = 5
+THINGS_ARRAY_SIZE = 24
 
-SECONDS_TO_LEVEL_UP = 1; XXX debug
+SECONDS_TO_LEVEL_UP = 30
 
 ; debug - macros for NintendulatorDX interaction
 .ifdef DEBUG
@@ -1058,7 +1058,6 @@ skip_delete_old_tail:
   DEC switch_timer
   BNE :+
   JSR switch_random_buttons
-  LDA #SWITCH_TIMER
   JSR rand
   AND #%111
   ADC #SWITCH_TIMER
