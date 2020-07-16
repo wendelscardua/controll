@@ -800,7 +800,7 @@ second_loop:
   STA PPUADDR
   LDA erase_ppu_l
   STA PPUADDR
-  LDA #$60
+  LDA #$9c ; empty tile
   STA PPUDATA
   LDA #$00
   STA erase_ppu_h
@@ -1476,8 +1476,8 @@ tile_per_directions:
    .byte $92 ; 1111 right right
 
 tile_per_thing:
-  .byte $60 ; nothing
-  .byte $82 ; wall / enemy
+  .byte $9c ; nothing
+  .byte $9d ; wall / enemy
   .byte $8C ; small coin
   .byte $8D ; big coin
 
