@@ -30,7 +30,7 @@ SWITCH_INITIAL_TIMER = 3
 SWITCH_TIMER = 10
 
 SNEK_QUEUE_SIZE = 32
-THINGS_ARRAY_SIZE = 24
+THINGS_ARRAY_SIZE = 20
 
 SECONDS_TO_LEVEL_UP = 30
 
@@ -156,6 +156,8 @@ snek_frame_counter: .res 1
 snek_direction: .res 1
 snek_length: .res 1
 snek_growth: .res 1
+snek_previous_direction: .res 1
+snek_segment_tile: .res 1
 
 ; clock (level up happens every X seconds)
 clock: .res 2
@@ -476,6 +478,7 @@ etc:
 
   LDA #directions::right
   STA snek_direction
+  STA snek_previous_direction
   
   LDA #$00
   STA snek_growth
@@ -946,7 +949,17 @@ skip_score_buffer:
   RTS
 :
 
+  ; compute new segment tile
+  LDA snek_previous_direction
+  ASL
+  ASL
+  ORA snek_direction
+  TAY
+  LDA tile_per_directions, Y
+  STA snek_segment_tile
+
   LDY snek_direction
+  STY snek_previous_direction
 
   ; if we are going to collide, game over
   LDA collidable_per_direction, Y
@@ -1034,7 +1047,7 @@ skip_delete_old_tail:
   LDA snek_ppu_l, X
   STA PPUADDR
   STA ppu_addr_ptr
-  LDA #$81 ; body tile
+  LDA snek_segment_tile ; body tile
   STA PPUDATA
   
   ; get new head x,y
@@ -1442,6 +1455,25 @@ snek_delay_per_level:
    .byte 24, 22, 20, 18, 16, 14, 12, 10,  8,  6,  6,  6,  6,  4,  4
    ; lv  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30
    .byte  4,  3,  3,  3,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  1
+
+tile_per_directions:
+   ; index = old-direction bits, new-direction bits (some are invalid)
+   .byte $90 ; 0000 up up  
+   .byte $58 ; 0001 X up down
+   .byte $94 ; 0010 up left
+   .byte $95 ; 0011 up right
+   .byte $58 ; 0100 X down up
+   .byte $91 ; 0101 down down
+   .byte $96 ; 0110 down left
+   .byte $97 ; 0111 down right
+   .byte $98 ; 1000 left up
+   .byte $99 ; 1001 left down
+   .byte $93 ; 1010 left left
+   .byte $58 ; 1011 X left right
+   .byte $9a ; 1100 right up
+   .byte $9b ; 1101 right down
+   .byte $58 ; 1110 X right left
+   .byte $92 ; 1111 right right
 
 tile_per_thing:
   .byte $60 ; nothing
