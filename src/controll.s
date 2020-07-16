@@ -157,6 +157,10 @@ snek_direction: .res 1
 snek_length: .res 1
 snek_growth: .res 1
 
+; score
+score_digits: .res 5
+score_buffer: .res 1
+
 ; coins / walls /enemies
 things_ppu_l: .res THINGS_ARRAY_SIZE
 things_ppu_h: .res THINGS_ARRAY_SIZE
@@ -434,9 +438,6 @@ etc:
   LDA #$FF
   STA coin_buffer
 
-  LDA #SWITCH_INITIAL_TIMER
-  STA switch_timer
-
   ; init snek
   LDA #$00
   STA snek_tail
@@ -471,6 +472,16 @@ etc:
   
   LDA #$00
   STA snek_growth
+
+  ; init etc
+  LDA #SWITCH_INITIAL_TIMER
+  STA switch_timer
+
+  LDA #$00
+  .repeat 5, index
+  STA score_digits+index
+  .endrepeat
+  STA score_buffer
 
   LDA #$01
   STA precomputed_are_dirty
@@ -743,9 +754,9 @@ second_loop:
 .endproc
 
 .proc playing
+  BIT PPUSTATUS
   LDA erase_ppu_h
   BEQ :+
-  BIT PPUSTATUS
   STA PPUADDR
   LDA erase_ppu_l
   STA PPUADDR
@@ -754,6 +765,7 @@ second_loop:
   LDA #$00
   STA erase_ppu_h
 :
+
   JSR update_snek
   JSR update_command_positions
 
@@ -817,9 +829,44 @@ second_loop:
   RTS
 .endproc
 
+.proc update_score
+  LDA score_buffer
+  BEQ skip_score_buffer
+
+  DEC score_buffer
+
+  LDX #$04
+@loop:
+  INC score_digits, X
+  LDA score_digits, X
+  CMP #10
+  BNE @endloop
+  LDA #0
+  STA score_digits, X
+  DEX
+  JMP @loop
+@endloop:
+
+skip_score_buffer:
+
+  ; non snek frame, we have time to refresh score (?)
+  BIT PPUSTATUS
+  LDA #$22
+  STA PPUADDR
+  LDA #$0b
+  STA PPUADDR
+  .repeat 5, index
+  LDA score_digits+index
+  STA PPUDATA
+  .endrepeat
+  
+  RTS
+.endproc
+
 .proc update_snek
   DEC snek_frame_counter
   BEQ :+
+  JSR update_score
   RTS
 :
 
@@ -978,10 +1025,20 @@ skip_delete_old_tail:
   CMP #collidable_type::small_coin
   BNE :+
   INC snek_growth
+  CLC
+  LDA #10
+  ADC score_buffer
+  STA score_buffer
   JMP delete_thing
 :
   CMP #collidable_type::big_coin
   BNE skip_coin_buffer
+
+  CLC
+  LDA #50
+  ADC score_buffer
+  STA score_buffer
+
   INC snek_growth
   INC snek_growth
 delete_thing:
