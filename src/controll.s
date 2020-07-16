@@ -1023,7 +1023,7 @@ delete_old_tail:
   JMP dequeue_tail
 
 no_spawn:
-  LDA #$60 ; empty arena tile
+  LDA #$9c ; empty arena tile
   STA PPUDATA
 dequeue_tail:
 
