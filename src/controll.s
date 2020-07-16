@@ -25,13 +25,14 @@ FT_DPCM_OFF=$c000
 ; game config
 FIRST_SPAWN_DELAY = 10
 SPAWN_DELAY = 20
-SNEK_INITIAL_DELAY = 12
 
 SWITCH_INITIAL_TIMER = 3
 SWITCH_TIMER = 10
 
 SNEK_QUEUE_SIZE = 32
 THINGS_ARRAY_SIZE = 5
+
+SECONDS_TO_LEVEL_UP = 1; XXX debug
 
 ; debug - macros for NintendulatorDX interaction
 .ifdef DEBUG
@@ -151,15 +152,20 @@ snek_ppu_h: .res SNEK_QUEUE_SIZE
 snek_head: .res 1
 snek_tail: .res 1
 
-snek_delay: .res 1
 snek_frame_counter: .res 1
 snek_direction: .res 1
 snek_length: .res 1
 snek_growth: .res 1
 
+; clock (level up happens every X seconds)
+clock: .res 2
+
 ; score
 score_digits: .res 5
 score_buffer: .res 1
+; level
+level_digits: .res 2
+level_hex: .res 1 ; binary level (-1, so first level is $00)
 
 ; coins / walls /enemies
 things_ppu_l: .res THINGS_ARRAY_SIZE
@@ -462,9 +468,7 @@ etc:
   LDA #$31
   STA snek_ppu_l+3
 
-  ; TODO variable speed
-  LDA #SNEK_INITIAL_DELAY
-  STA snek_delay
+  LDA snek_delay_per_level
   STA snek_frame_counter
 
   LDA #directions::right
@@ -482,8 +486,13 @@ etc:
   STA score_digits+index
   .endrepeat
   STA score_buffer
+  STA clock
+  STA clock+1
+  STA level_digits
+  STA level_hex
 
   LDA #$01
+  STA level_digits+1
   STA precomputed_are_dirty
 
   VBLANK
@@ -753,6 +762,31 @@ second_loop:
   RTS
 .endproc
 
+.proc update_clock
+  INC clock
+  LDA clock
+  CMP #60
+  BNE :+
+  LDA #0
+  STA clock
+  INC clock+1
+  LDA clock+1
+  CMP #SECONDS_TO_LEVEL_UP
+  BNE :+
+  LDA #0
+  STA clock+1
+  INC level_hex
+  INC level_digits+1
+  LDA level_digits+1
+  CMP #10
+  BNE :+
+  LDA #0
+  STA level_digits+1
+  INC level_digits
+:
+  RTS
+.endproc
+
 .proc playing
   BIT PPUSTATUS
   LDA erase_ppu_h
@@ -766,6 +800,7 @@ second_loop:
   STA erase_ppu_h
 :
 
+  JSR update_clock
   JSR update_snek
   JSR update_command_positions
 
@@ -859,6 +894,15 @@ skip_score_buffer:
   LDA score_digits+index
   STA PPUDATA
   .endrepeat
+
+  LDA #$22
+  STA PPUADDR
+  LDA #$19
+  STA PPUADDR
+  LDA level_digits+0
+  STA PPUDATA
+  LDA level_digits+1
+  STA PPUDATA
   
   RTS
 .endproc
@@ -994,7 +1038,8 @@ skip_delete_old_tail:
   INC precomputed_are_dirty
 
   ; refresh frame counter
-  LDA snek_delay
+  LDX level_hex
+  LDA snek_delay_per_level, X
   STA snek_frame_counter
   RTS
 .endproc
@@ -1359,6 +1404,13 @@ command_positions_x:
 
 command_positions_y:
   .byte $90, $d0, $b0, $b0, $a0, $a0
+
+snek_delay_per_level:
+   ; linear speed increasing
+   ; lv  01  02  03  04  05  06  07  08  09  10  11  12  13  14  15
+   .byte 24, 22, 20, 18, 16, 14, 12, 10,  8,  6,  6,  6,  6,  4,  4
+   ; lv  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30
+   .byte  4,  3,  3,  3,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  1
 
 tile_per_thing:
   .byte $60 ; nothing
