@@ -85,6 +85,7 @@ oam_sprites:
 .enum game_states
   waiting_to_start
   playing
+  game_over
 .endenum
 
 .enum directions
@@ -169,6 +170,8 @@ score_buffer: .res 1
 high_score_digits: .res 5
 
 ; level
+selected_level_digits: .res 2
+selected_level_hex: .res 1
 level_digits: .res 2
 level_hex: .res 1 ; binary level (-1, so first level is $00)
 
@@ -299,6 +302,12 @@ clear_ram:
   STA rng_seed
   LDA #$73
   STA rng_seed+1
+
+  LDA #$00
+  STA selected_level_hex
+  STA selected_level_digits
+  LDA #$01
+  STA selected_level_digits+1
 
   JSR go_to_title
 
@@ -435,6 +444,15 @@ etc:
   LDA #$00
   STA switcheroo
 
+  ; set level
+  LDA selected_level_hex
+  STA level_hex
+  .repeat 2, index
+  LDA selected_level_digits+index
+  STA level_digits+index
+  .endrepeat
+
+
   ; init things
   LDA #FIRST_SPAWN_DELAY
   STA thing_spawn_counter
@@ -494,11 +512,8 @@ etc:
   STA score_buffer
   STA clock
   STA clock+1
-  STA level_digits
-  STA level_hex
 
   LDA #$01
-  STA level_digits+1
   STA precomputed_are_dirty
 
   VBLANK
@@ -512,7 +527,7 @@ etc:
 .endproc
 
 .proc go_to_game_over
-  LDA #game_states::waiting_to_start
+  LDA #game_states::game_over
   STA game_state
 
   ; erase sprites
@@ -560,11 +575,59 @@ etc:
 .endproc
 
 .proc waiting_to_start
+  BIT PPUSTATUS
+  LDA #$22
+  STA PPUADDR
+  LDA #$f1
+  STA PPUADDR
+  LDA selected_level_digits
+  STA PPUDATA
+  LDA selected_level_digits+1
+  STA PPUDATA
+
   JSR readjoy
   LDA pressed_buttons
   AND #BUTTON_START
   BEQ :+
   JSR go_to_playing
+:
+  LDA pressed_buttons
+  AND #(BUTTON_UP | BUTTON_RIGHT)
+  BEQ :+
+  LDA selected_level_hex
+  CMP #29
+  BEQ :+
+  INC selected_level_hex
+  INC selected_level_digits+1
+  LDA selected_level_digits+1
+  CMP #10
+  BNE :+
+  LDA #0
+  STA selected_level_digits+1
+  INC selected_level_digits
+:
+  LDA pressed_buttons
+  AND #(BUTTON_DOWN | BUTTON_LEFT)
+  BEQ :+
+  LDA selected_level_hex
+  BEQ :+
+  DEC selected_level_hex
+  DEC selected_level_digits+1
+  BPL :+
+  LDA #9
+  STA selected_level_digits+1
+  DEC selected_level_digits
+:
+  
+  RTS
+.endproc
+
+.proc game_over
+  JSR readjoy
+  LDA pressed_buttons
+  AND #BUTTON_START
+  BEQ :+
+  JSR go_to_title
 :
   RTS
 .endproc
@@ -1415,10 +1478,12 @@ chrrom_bankswitch:
 game_state_handlers_l:
   .byte <(waiting_to_start-1)
   .byte <(playing-1)
+  .byte <(game_over-1)
 
 game_state_handlers_h:
   .byte >(waiting_to_start-1)
   .byte >(playing-1)
+  .byte >(game_over-1)
 
 command_handlers_l:
   .byte <(command_up-1)
