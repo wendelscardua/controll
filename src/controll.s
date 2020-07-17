@@ -309,6 +309,7 @@ forever:
   BEQ etc
   STA old_nmis
   ; new frame code
+  JSR animate_tiles
   JSR game_state_handler
   JSR screen_stuff
   JSR FamiToneUpdate
@@ -796,7 +797,7 @@ second_loop:
   RTS
 .endproc
 
-.proc playing
+.proc animate_tiles
   LDA nmis
   AND #%11000
   LSR
@@ -804,6 +805,10 @@ second_loop:
   LSR
   TAX
   STA chrrom_bankswitch, X
+  RTS
+.endproc
+
+.proc playing
   BIT PPUSTATUS
   LDA erase_ppu_h
   BEQ :+
