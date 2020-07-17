@@ -30,7 +30,7 @@ SWITCH_INITIAL_TIMER = 3
 SWITCH_TIMER = 10
 
 SNEK_QUEUE_SIZE = 32
-THINGS_ARRAY_SIZE = 20
+THINGS_ARRAY_SIZE = 32
 
 SECONDS_TO_LEVEL_UP = 30
 
@@ -172,13 +172,6 @@ high_score_digits: .res 5
 level_digits: .res 2
 level_hex: .res 1 ; binary level (-1, so first level is $00)
 
-; coins / walls /enemies
-things_ppu_l: .res THINGS_ARRAY_SIZE
-things_ppu_h: .res THINGS_ARRAY_SIZE
-things_type: .res THINGS_ARRAY_SIZE
-things_count: .res 1
-thing_index_per_direction: .res 4
-
 ; every X frames, spawn a thing
 thing_spawn_counter: .res 1
 next_thing_to_spawn: .res 1
@@ -200,6 +193,13 @@ erase_ppu_l: .res 1
 
 .segment "BSS"
 ; non-zp RAM goes here
+
+; coins / walls /enemies
+things_ppu_l: .res THINGS_ARRAY_SIZE
+things_ppu_h: .res THINGS_ARRAY_SIZE
+things_type: .res THINGS_ARRAY_SIZE
+things_count: .res 1
+thing_index_per_direction: .res 4
 
 .segment "CODE"
 
