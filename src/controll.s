@@ -300,8 +300,7 @@ clear_ram:
   LDA #$73
   STA rng_seed+1
 
-  ; JSR go_to_title ; TODO - restore when ready
-  JSR go_to_playing
+  JSR go_to_title
 
 forever:
   LDA nmis
@@ -1517,8 +1516,12 @@ metasprite_h_per_command:
 
 
 .segment "CHR"
-.incbin "../assets/graphics.chr"
-.incbin "../assets/graphics2.chr"
-.incbin "../assets/graphics3.chr"
-.incbin "../assets/graphics4.chr"
+.incbin "../assets/chr/sprites.chr"
+.incbin "../assets/chr/bg1.chr"
+.incbin "../assets/chr/sprites.chr"
+.incbin "../assets/chr/bg2.chr"
+.incbin "../assets/chr/sprites.chr"
+.incbin "../assets/chr/bg3.chr"
+.incbin "../assets/chr/sprites.chr"
+.incbin "../assets/chr/bg4.chr"
 
