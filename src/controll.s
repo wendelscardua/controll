@@ -583,7 +583,7 @@ etc:
 .endproc
 
 .proc command_up
-  LDA snek_direction
+  LDA snek_previous_direction
   CMP #directions::down
   BEQ :+
   LDA #directions::up
@@ -593,7 +593,7 @@ etc:
 .endproc
 
 .proc command_down
-  LDA snek_direction
+  LDA snek_previous_direction
   CMP #directions::up
   BEQ :+
   LDA #directions::down
@@ -603,7 +603,7 @@ etc:
 .endproc
 
 .proc command_left
-  LDA snek_direction
+  LDA snek_previous_direction
   CMP #directions::right
   BEQ :+
   LDA #directions::left
@@ -613,7 +613,7 @@ etc:
 .endproc
 
 .proc command_right
-  LDA snek_direction
+  LDA snek_previous_direction
   CMP #directions::left
   BEQ :+
   LDA #directions::right
