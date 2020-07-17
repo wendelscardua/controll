@@ -1444,7 +1444,7 @@ nametable_title: .incbin "../assets/nametables/title.rle"
 nametable_game_over: .incbin "../assets/nametables/game_over.rle"
 
 command_positions_x:
-  .byte $40, $40, $20, $60, $90, $b0
+  .byte $40, $40, $20, $60, $b0, $90
 
 command_positions_y:
   .byte $90, $d0, $b0, $b0, $a0, $a0
