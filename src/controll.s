@@ -656,6 +656,9 @@ loop:
 :
   INC switcheroo
 
+  LDA #120
+  STA snek_frame_counter ; give some time to think
+
 first_loop:
   LDA rng_seed
   AND #%111
