@@ -797,6 +797,13 @@ second_loop:
 .endproc
 
 .proc playing
+  LDA nmis
+  AND #%11000
+  LSR
+  LSR
+  LSR
+  TAX
+  STA chrrom_bankswitch, X
   BIT PPUSTATUS
   LDA erase_ppu_h
   BEQ :+
@@ -1398,6 +1405,9 @@ return:
 
 .segment "RODATA"
 
+chrrom_bankswitch:
+  .byte $00, $01, $02, $03
+
 game_state_handlers_l:
   .byte <(waiting_to_start-1)
   .byte <(playing-1)
@@ -1503,4 +1513,7 @@ metasprite_h_per_command:
 
 .segment "CHR"
 .incbin "../assets/graphics.chr"
+.incbin "../assets/graphics2.chr"
+.incbin "../assets/graphics3.chr"
+.incbin "../assets/graphics4.chr"
 
