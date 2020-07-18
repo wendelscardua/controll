@@ -22,6 +22,7 @@ FT_DPCM_OFF=$c000
   Confirm
   Toggle
   CoinGet
+  BigCoinGet
 .endenum
 
 .macro SFX effect, channel
@@ -1266,7 +1267,7 @@ skip_delete_old_tail:
   CMP #collidable_type::big_coin
   BNE skip_coin_buffer
 
-  SFX CoinGet, CH1
+  SFX BigCoinGet, CH1
   CLC
   LDA #50
   ADC score_buffer
