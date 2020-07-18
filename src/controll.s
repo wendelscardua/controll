@@ -23,6 +23,7 @@ FT_DPCM_OFF=$c000
   Toggle
   CoinGet
   BigCoinGet
+  Bonk
 .endenum
 
 .macro SFX effect, channel
@@ -1108,6 +1109,7 @@ skip_score_buffer:
   LDA collidable_per_direction, Y
   CMP #collidable_type::wall
   BNE :+
+  SFX Bonk, CH1
   JSR go_to_game_over
   RTS
 :
