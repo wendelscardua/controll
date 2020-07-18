@@ -175,6 +175,9 @@ selected_level_hex: .res 1
 level_digits: .res 2
 level_hex: .res 1 ; binary level (-1, so first level is $00)
 
+; fun
+fun_enabled: .res 1
+
 ; every X frames, spawn a thing
 thing_spawn_counter: .res 1
 next_thing_to_spawn: .res 1
@@ -308,6 +311,9 @@ clear_ram:
   STA selected_level_digits
   LDA #$01
   STA selected_level_digits+1
+
+  LDA #$01
+  STA fun_enabled
 
   JSR go_to_title
 
@@ -578,12 +584,35 @@ etc:
   BIT PPUSTATUS
   LDA #$22
   STA PPUADDR
-  LDA #$f1
+  LDA #$ec
   STA PPUADDR
   LDA selected_level_digits
   STA PPUDATA
   LDA selected_level_digits+1
   STA PPUDATA
+
+  LDA #$22
+  STA PPUADDR
+  LDA #$f2
+  STA PPUADDR
+  LDX #$0
+  LDA fun_enabled
+  BEQ @loop_boring
+@loop_fun:
+  LDA string_fun, X
+  STA PPUDATA
+  INX
+  CPX #6
+  BNE @loop_fun
+  JMP @readjoy
+@loop_boring:
+  LDA string_boring, X
+  STA PPUDATA
+  INX
+  CPX #6
+  BNE @loop_boring
+  
+@readjoy:
 
   JSR readjoy
   LDA pressed_buttons
@@ -1519,7 +1548,8 @@ sprites:
 .include "../assets/metasprites.s"
 
 strings:
-  ; TODO put strings here if needed
+string_fun: .byte $82, "FUN", $82, $82
+string_boring: .byte "BORING"
 
 nametable_main: .incbin "../assets/nametables/main.rle"
 nametable_title: .incbin "../assets/nametables/title.rle"
