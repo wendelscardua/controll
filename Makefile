@@ -30,6 +30,12 @@ src/${PROJECT}.o: src/${PROJECT}.s src/constants.inc src/header.inc src/famitone
 src/audio-data.o: src/audio-data.s assets/audio/${PROJECT}-sfx.s assets/audio/${PROJECT}-soundtrack.s
 	ca65 src/audio-data.s ${CA65_FLAGS}
 
+assets/audio/${PROJECT}-soundtrack.s: assets/audio/${PROJECT}-soundtrack.txt
+	${TEXT2DATA} $^ -ca65 -allin
+
+assets/audio/${PROJECT}-soundtrack.txt: assets/audio/${PROJECT}-soundtrack.ftm
+	${FAMITRACKER} $^ -export $@
+
 assets/audio/${PROJECT}-sfx.nsf: assets/audio/${PROJECT}-sfx.ftm
 	${FAMITRACKER} assets/audio/${PROJECT}-sfx.ftm -export assets/audio/${PROJECT}-sfx.nsf
 

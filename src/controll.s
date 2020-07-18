@@ -15,7 +15,8 @@ FT_DPCM_OFF=$c000
 
 ; music/sfx constants
 .enum music_track
-  ; TODO - list tracks
+  NibblesTitleRetromix
+  NibblesLevelRetromix
 .endenum
 
 .enum sfx
@@ -31,6 +32,13 @@ FT_DPCM_OFF=$c000
   LDA #sfx::effect
   LDX #.ident ( .concat( "FT_SFX_", .string(channel) ) )
   JSR FamiToneSfxPlay
+  restore_regs
+.endmacro
+
+.macro PLAY track
+  save_regs
+  LDA #music_track::track
+  JSR FamiToneMusicPlay
   restore_regs
 .endmacro
 
@@ -419,6 +427,8 @@ etc:
   LDA #%00011110  ; turn on screen
   STA PPUMASK
 
+  PLAY NibblesTitleRetromix
+
   RTS
 .endproc
 
@@ -541,6 +551,8 @@ etc:
   STA PPUCTRL
   LDA #%00011110  ; turn on screen
   STA PPUMASK
+
+  PLAY NibblesLevelRetromix
 
   RTS
 .endproc
