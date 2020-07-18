@@ -450,7 +450,7 @@ etc:
   LDA command_positions_y, X
   STA sprite_y_per_command, X
   STA target_sprite_y_per_command, X
-  
+
   DEX
   BPL :-
 
@@ -479,7 +479,7 @@ etc:
   STA things_count
   STA erase_ppu_h
   STA erase_ppu_l
-  
+
   LDA #$FF
   STA coin_buffer
 
@@ -513,7 +513,7 @@ etc:
   LDA #directions::right
   STA snek_direction
   STA snek_previous_direction
-  
+
   LDA #$00
   STA snek_growth
 
@@ -621,7 +621,7 @@ etc:
   INX
   CPX #6
   BNE @loop_boring
-  
+
 @readjoy:
 
   JSR readjoy
@@ -632,7 +632,7 @@ etc:
   JSR go_to_playing
 :
   LDA pressed_buttons
-  AND #(BUTTON_UP | BUTTON_RIGHT)
+  AND #BUTTON_UP
   BEQ :+
   LDA selected_level_hex
   CMP #29
@@ -648,7 +648,7 @@ etc:
   INC selected_level_digits
 :
   LDA pressed_buttons
-  AND #(BUTTON_DOWN | BUTTON_LEFT)
+  AND #BUTTON_DOWN
   BEQ :+
   LDA selected_level_hex
   BEQ :+
@@ -660,7 +660,14 @@ etc:
   STA selected_level_digits+1
   DEC selected_level_digits
 :
-  
+  LDA pressed_buttons
+  AND #(BUTTON_LEFT|BUTTON_RIGHT)
+  BEQ :+
+  SFX Toggle, CH0
+  LDA fun_enabled
+  EOR #%1
+  STA fun_enabled
+:
   RTS
 .endproc
 
@@ -747,7 +754,7 @@ loop:
   LDA metasprite_h_per_command, X
   STA addr_ptr+1
   save_regs
-  JSR display_metasprite  
+  JSR display_metasprite
   restore_regs
   DEX
   BPL loop
@@ -755,7 +762,10 @@ loop:
 .endproc
 
 .proc switch_random_buttons
+  LDA fun_enabled
+  BNE :+
   RTS
+:
   LDA switcheroo
   BEQ :+
   RTS
@@ -774,7 +784,7 @@ first_loop:
   JMP first_loop
 :
   STA temp_x
-  
+
 second_loop:
   JSR rand
   LDA rng_seed
@@ -792,7 +802,7 @@ second_loop:
   STA temp_x
   LDA command_per_button, Y
   STA temp_y
-  
+
   LDA command_per_button, X
   PHA
   LDA command_per_button, Y
@@ -1169,7 +1179,7 @@ skip_delete_old_tail:
   STA ppu_addr_ptr
   LDA snek_segment_tile ; body tile
   STA PPUDATA
-  
+
   ; get new head x,y
   LDA target_ppu_l_per_direction, Y
   STA ppu_addr_ptr
@@ -1328,7 +1338,7 @@ skip_thing_randomization:
   precompute_target_ppu_per_direction:
   ; X = directions, decreasing
   ; Y = snek head index
-  LDY snek_head  
+  LDY snek_head
   LDX #$03
 @loop:
   CLC
@@ -1406,7 +1416,7 @@ precompute_collidables_per_direction:
 
   LDA #$00
   STA precomputed_are_dirty
-  
+
 skip_precomputing:
 
   LDA dirty_sprite_data
@@ -1586,7 +1596,7 @@ snek_delay_per_level:
 
 tile_per_directions:
    ; index = old-direction bits, new-direction bits (some are invalid)
-   .byte $90 ; 0000 up up  
+   .byte $90 ; 0000 up up
    .byte $58 ; 0001 X up down
    .byte $94 ; 0010 up left
    .byte $95 ; 0011 up right
@@ -1616,7 +1626,7 @@ metasprite_l_per_command:
   .byte <metasprite_3_data
   .byte <metasprite_4_data
   .byte <metasprite_4_data
-  
+
 metasprite_h_per_command:
   .byte >metasprite_0_data
   .byte >metasprite_1_data
