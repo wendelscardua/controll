@@ -178,6 +178,7 @@ score_digits: .res 5
 score_buffer: .res 1
 
 high_score_digits: .res 5
+alt_high_score_digits: .res 5
 
 ; level
 selected_level_digits: .res 2
@@ -667,7 +668,18 @@ etc:
   LDA fun_enabled
   EOR #%1
   STA fun_enabled
+  LDX #$04
+@loop:
+  LDA high_score_digits, X
+  STA temp_x
+  LDA alt_high_score_digits, X
+  STA high_score_digits, X
+  LDA temp_x
+  STA alt_high_score_digits, X
+  DEX
+  BPL @loop
 :
+
   RTS
 .endproc
 
