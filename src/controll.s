@@ -19,8 +19,18 @@ FT_DPCM_OFF=$c000
 .endenum
 
 .enum sfx
-  ; TODO - list effects
+  Confirm
+  Toggle
+  CoinGet
 .endenum
+
+.macro SFX effect, channel
+  save_regs
+  LDA #sfx::effect
+  LDX #.ident ( .concat( "FT_SFX_", .string(channel) ) )
+  JSR FamiToneSfxPlay
+  restore_regs
+.endmacro
 
 ; game config
 FIRST_SPAWN_DELAY = 10
@@ -589,6 +599,7 @@ etc:
   LDA pressed_buttons
   AND #BUTTON_START
   BEQ :+
+  SFX Confirm, CH0
   JSR go_to_playing
 :
   LDA pressed_buttons
@@ -597,6 +608,7 @@ etc:
   LDA selected_level_hex
   CMP #29
   BEQ :+
+  SFX Toggle, CH0
   INC selected_level_hex
   INC selected_level_digits+1
   LDA selected_level_digits+1
@@ -611,6 +623,7 @@ etc:
   BEQ :+
   LDA selected_level_hex
   BEQ :+
+  SFX Toggle, CH0
   DEC selected_level_hex
   DEC selected_level_digits+1
   BPL :+
@@ -713,6 +726,7 @@ loop:
 .endproc
 
 .proc switch_random_buttons
+  RTS
   LDA switcheroo
   BEQ :+
   RTS
@@ -1190,6 +1204,7 @@ skip_delete_old_tail:
 
   CMP #collidable_type::small_coin
   BNE :+
+  SFX CoinGet, CH1
   INC snek_growth
   CLC
   LDA #10
@@ -1200,6 +1215,7 @@ skip_delete_old_tail:
   CMP #collidable_type::big_coin
   BNE skip_coin_buffer
 
+  SFX CoinGet, CH1
   CLC
   LDA #50
   ADC score_buffer
