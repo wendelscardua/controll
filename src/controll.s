@@ -25,6 +25,7 @@ FT_DPCM_OFF=$c000
   CoinGet
   BigCoinGet
   Bonk
+  Swap
 .endenum
 
 .macro SFX effect, channel
@@ -792,6 +793,9 @@ loop:
   BNE :+
   RTS
 :
+
+  SFX Swap, CH2
+
   LDA switcheroo
   BEQ :+
   RTS
