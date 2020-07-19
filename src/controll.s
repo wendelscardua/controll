@@ -48,7 +48,7 @@ FIRST_SPAWN_DELAY = 10
 SPAWN_DELAY = 20
 
 SWITCH_INITIAL_TIMER = 3
-SWITCH_TIMER = 10
+SWITCH_TIMER = 5
 
 SNEK_QUEUE_SIZE = 32
 THINGS_ARRAY_SIZE = 32
@@ -1265,7 +1265,7 @@ skip_delete_old_tail:
   BNE :+
   JSR switch_random_buttons
   JSR rand
-  AND #%111
+  AND #%11
   ADC #SWITCH_TIMER
   STA switch_timer
 :
