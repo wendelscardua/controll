@@ -4,6 +4,8 @@ CA65_FLAGS=
 NSF2DATA=/mnt/c/NESDev/famitone2d/NSF/nsf2data.exe
 TEXT2DATA=/mnt/c/NESDev/famitone2d/text2data.exe
 FAMITRACKER=/mnt/c/NESDev/famitracker/FamiTracker.exe
+EMULATOR=/mnt/c/Games/fceux/fceux.exe
+
 TARGET=${PROJECT}.nes
 
 .PHONY : debug run
@@ -49,4 +51,4 @@ clean:
 	rm src/*.o *.nes labels.txt *.dbg
 
 run: debug
-	Nintendulator.exe ${PROJECT}.nes
+	${EMULATOR} ${PROJECT}.nes
