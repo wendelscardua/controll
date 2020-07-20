@@ -1619,11 +1619,10 @@ command_positions_y:
   .byte $90, $d0, $b0, $b0, $a0, $a0
 
 snek_delay_per_level:
-   ; linear speed increasing
    ; lv  01  02  03  04  05  06  07  08  09  10  11  12  13  14  15
-   .byte 24, 22, 20, 18, 16, 14, 12, 10,  8,  6,  6,  6,  6,  4,  4
+   .byte 24, 22, 20, 18, 16, 14, 12, 11, 10, 10,  9,  9,  8,  8,  8
    ; lv  16  17  18  19  20  21  22  23  24  25  26  27  28  29  30
-   .byte  4,  3,  3,  3,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  1
+   .byte  7,  7,  7,  6,  6,  6,  5,  5,  5,  4,  4,  4,  3,  2,  1
 
 tile_per_directions:
    ; index = old-direction bits, new-direction bits (some are invalid)
