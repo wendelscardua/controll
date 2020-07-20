@@ -1366,6 +1366,20 @@ skip_thing_randomization:
   LDA precomputed_are_dirty
   BEQ skip_precomputing
 
+  JSR compute_collisions
+
+skip_precomputing:
+
+  LDA dirty_sprite_data
+  BEQ :+
+  JSR update_command_sprites
+  LDA #$00
+  STA dirty_sprite_data
+:
+  RTS
+.endproc
+
+.proc compute_collisions
   precompute_target_ppu_per_direction:
   ; X = directions, decreasing
   ; Y = snek head index
@@ -1387,7 +1401,7 @@ precompute_collidables_per_direction:
   ; X = directions, decreasing
   LDX #$03
 @loop:
-  ; wall collision
+  ; wall "collision" (wraparound)
 
   LDA target_ppu_h_per_direction, X
   ; ppu_h goes from 20 to 22
@@ -1396,8 +1410,13 @@ precompute_collidables_per_direction:
   CMP #$22
   BNE @ppu_h_20_or_21
 @ppu_h_22:
-  LDA #collidable_type::wall
-  JMP @next
+  LDA #$20
+  STA target_ppu_h_per_direction, X
+  LDA target_ppu_l_per_direction, X
+  CLC
+  ADC #$40
+  STA target_ppu_l_per_direction, X
+  JMP @no_wall
 
 @ppu_h_20_or_21:
   CMP #$20
@@ -1410,8 +1429,13 @@ precompute_collidables_per_direction:
   CMP #$3C
   BCS @no_top_wall
 @top_wall:
-  LDA #collidable_type::wall
-  JMP @next
+  CLC
+  ADC #$C0
+  STA target_ppu_l_per_direction, X
+  LDA #$21
+  ADC #$00
+  STA target_ppu_h_per_direction, X
+  JMP @no_wall
 @no_top_wall:
 @ppu_h_21:
   ; for ppu_h 20 and 21, ppu_l values for left/right walls are the same
@@ -1425,13 +1449,27 @@ precompute_collidables_per_direction:
   AND #%00011111
   CMP #%00000011
   BNE @no_left
-  LDA #collidable_type::wall
-  JMP @next
+  LDA target_ppu_l_per_direction, X
+  CLC
+  ADC #$18
+  STA target_ppu_l_per_direction, X
+  LDA target_ppu_h_per_direction, X
+  ADC #$00
+  STA target_ppu_h_per_direction, X
+  JMP @no_wall
 @no_left:
   CMP #%00011100
   BNE @no_wall
-  LDA #collidable_type::wall
-  JMP @next
+
+  LDA target_ppu_l_per_direction, X
+  CLC
+  ADC #$e8
+  STA target_ppu_l_per_direction, X
+  LDA target_ppu_h_per_direction, X
+  ADC #$ff
+  STA target_ppu_h_per_direction, X
+
+  ; JMP @no_wall
 @no_wall:
 
   JSR compute_snek_collision
@@ -1448,14 +1486,6 @@ precompute_collidables_per_direction:
   LDA #$00
   STA precomputed_are_dirty
 
-skip_precomputing:
-
-  LDA dirty_sprite_data
-  BEQ :+
-  JSR update_command_sprites
-  LDA #$00
-  STA dirty_sprite_data
-:
   RTS
 .endproc
 
